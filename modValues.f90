@@ -5,7 +5,7 @@ module modValues
 
 
     real(8) :: CFL, time_max, eosGamma, eosCp, len, dx, &
-     time, charVel, wL(3), wR(3), vecSf, dPN, avgDp, underRelaxFactP, &
+     time, charVel, vecSf, dPN, avgDp, underRelaxFactP, &
      timestep, timestepMax, resiP, fVol, gP, gF, resiU, &
      maxP,minP,maxU,minU,segAlp1,segAlp2,gN,resiR,maxR,minR,&
      saveRho,oldLfUx,oldRfUx,resiT,savecT,savecDummy,&
@@ -22,14 +22,17 @@ module modValues
     BmatMom1,BmatMom2,BmatPres,coeffMom1,coeffMom2,fcoeffMom1,fcoeffMom2, &
         saveOneValue,BmatEnr,BmatCon
     real(8), dimension(:,:), allocatable :: segAmat,oldCons,oldPrim,&
-         AmatPres,AmatMom,AmatEnr,AmatCon
+         AmatPres,AmatMom,AmatEnr,AmatCon, wL, wR
     integer :: nCell, nCellStr, nCellEnd, nTCellStr, nTCellEnd, &
      nFace, nFaceStr, nFaceEnd, i, nstep, lFace, rFace, iterSIMPLE, &
-     iterMaxSIMPLE, lCell, rCell, iterPISO, iterMaxPISO, iterDummy
+     iterMaxSIMPLE, lCell, rCell, iterPISO, iterMaxPISO, iterDummy,&
+     ntimestep
+    character(len=15) :: chReconP,chReconU,chReconT,chReconR,&
+        chFluxP,chFluxU,chFluxT,chFluxR
     
     contains
     
-    subroutine initValues
+    subroutine getAllocate
     
         nCellStr = 1
         nCellEnd = nCell
@@ -109,7 +112,9 @@ module modValues
                   fgP(nFaceStr:nFaceEnd), &
                   fgN(nFaceStr:nFaceEnd), &
                   fcoeffMom1(nFaceStr:nFaceEnd), &
-                  fcoeffMom2(nFaceStr:nFaceEnd)   )
+                  fcoeffMom2(nFaceStr:nFaceEnd), &
+                  wL(nFaceStr:nFaceEnd,3), &
+                  wR(nFaceStr:nFaceEnd,3)   )
     
         allocate( AmatPres(nCellEnd,nCellEnd), &
                   BmatPres(nCellEnd), &

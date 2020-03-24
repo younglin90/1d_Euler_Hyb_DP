@@ -1,0 +1,23 @@
+&input
+nCell = 100
+time_max = 0.2 !sec
+eosGamma = 1.4 ! air
+eosCp = 1004.d0
+len = 1.0 ! m, x-length
+iterMaxSIMPLE = 5
+iterMaxPISO = 3
+chReconP = '3thMUSCL'
+chReconU = '3thMUSCL'
+chReconT = '3thMUSCL'
+chReconR = '3thMUSCL'
+chFluxP = 'AUSM'
+chFluxU = 'AUSM'
+chFluxT = 'AUSM'
+chFluxR = 'AUSM'
+underRelaxFactP = 0.3d0
+underRelaxFactT = 1.0d0
+underRelaxFactR = 1.0d0
+underRelaxFactU = 0.7d0
+!timestepMax = 1.d-2
+timestep = 2.d-3
+/

@@ -71,10 +71,21 @@ module modResidual
                 enddo
                 resiT = dsqrt(resiT) / (dmax1(maxvalue,0.d0)-dmin1(minvalue,0.d0)+1.d-15)
             
-            
+            !if( mod(nstep,4) == 0 ) then
                 write(*,100) nstep,iterSIMPLE,iterPISO,resiP,resiU,resiR,resiT
                 !stop
+                !/////////////////////////////////
+                open(20,file='residual.txt',status='old',position='append')
+                WRITE( 20, '(i5,1X,20(F20.9, 1X))' ) nstep,log(resiP),&
+                    log(resiU),log(resiR),log(resiT)
+                close(20)
+                !/////////////////////////////////
+            if( mod(nstep,1000) == 0 ) then
+                !OPEN(20, FILE = 'residual.txt', STATUS = 'REPLACE')
+                close(20)
+            endif
             
+            !endif
                 !=======================================================
     
 100 format(i7,1x,i7,1x,i7,1x,6(1pe10.2))

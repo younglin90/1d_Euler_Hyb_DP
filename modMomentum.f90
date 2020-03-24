@@ -49,19 +49,23 @@ module modMomentum
     
     
     subroutine getCoeff
+        use modFaceValues
         implicit none
     
-            !> Variables initialization AUSM+
-            do i=nFaceStr,nFaceEnd
-                lCell = i; rCell = i+1
-                wL(:) = (/cRho(lCell),cU(lCell),cP(lCell)/)
-                wR(:) = (/cRho(rCell),cU(rCell),cP(rCell)/)
-                CALL calfaceValAUSM(wL,wR,eosGamma, fMdot(i),fU(i),fP(i))
-                fMdot(i) = fMdot(i)*area(i)
-                fgP(i) = 0.5d0*(1.d0+dsign(1.d0,fU(i)))
-                fgN(i) = 0.5d0*(1.d0-dsign(1.d0,fU(i)))
-                fUx(i) = fgP(i)*cU(lCell) + fgN(i)*cU(rCell)
-            enddo
+            !!> Variables initialization AUSM+
+            !do i=nFaceStr,nFaceEnd
+            !    lCell = i; rCell = i+1
+            !    wL(i,:) = (/cRho(lCell),cU(lCell),cP(lCell)/)
+            !    wR(i,:) = (/cRho(rCell),cU(rCell),cP(rCell)/)
+            !    CALL calfaceValAUSM(wL(i,:),wR(i,:),eosGamma, fMdot(i),fU(i),fP(i))
+            !    fMdot(i) = fMdot(i)*area(i)
+            !    fgP(i) = 0.5d0*(1.d0+dsign(1.d0,fU(i)))
+            !    fgN(i) = 0.5d0*(1.d0-dsign(1.d0,fU(i)))
+            !    fUx(i) = fgP(i)*cU(lCell) + fgN(i)*cU(rCell)
+            !enddo
+            CALL getFaceValues(ReconMethod=chReconU,&
+                FluxMethod=chFluxU,calfgP='on',calfgN='on',calfUx='on')
+            
             !> Calc. Matix of Linear System about Momentum Eq.
             !> A*x=B
             AmatMom(:,:) = 0.d0
@@ -94,20 +98,24 @@ module modMomentum
     !========================================================
     
     subroutine getVelocity_explicit
+        use modFaceValues
         implicit none
         
         real(8) :: save_dummy(ncell),save_Bmat(ncell)
         real(8) :: lfVelx,rfVelx,lfPx,rfPx
 
-        do i=nFaceStr,nFaceEnd
-            lCell = i; rCell = i+1
-            wL(:) = (/cRho(lCell),cU(lCell),cP(lCell)/)
-            wR(:) = (/cRho(rCell),cU(rCell),cP(rCell)/)
-            CALL calfaceValAUSM(wL,wR,eosGamma, fMdot(i),fU(i),fP(i))
-            fMdot(i) = fMdot(i)*area(i)
-            fgP(i) = 0.5d0*(1.d0+dsign(1.d0,fU(i)))
-            fgN(i) = 0.5d0*(1.d0-dsign(1.d0,fU(i)))
-        enddo
+        !do i=nFaceStr,nFaceEnd
+        !    lCell = i; rCell = i+1
+        !    wL(i,:) = (/cRho(lCell),cU(lCell),cP(lCell)/)
+        !    wR(i,:) = (/cRho(rCell),cU(rCell),cP(rCell)/)
+        !    CALL calfaceValAUSM(wL(i,:),wR(i,:),eosGamma, fMdot(i),fU(i),fP(i))
+        !    fMdot(i) = fMdot(i)*area(i)
+        !    fgP(i) = 0.5d0*(1.d0+dsign(1.d0,fU(i)))
+        !    fgN(i) = 0.5d0*(1.d0-dsign(1.d0,fU(i)))
+        !enddo
+        CALL getFaceValues(ReconMethod=chReconU,&
+            FluxMethod=chFluxU,calfgP='on',calfgN='on')
+        
         !> Calc. Matix of Linear System about Momentum Eq.
         do i=nCellStr,nCellEnd
             lFace = i-1; rFace = i
@@ -138,101 +146,101 @@ module modMomentum
     
     
 
-    subroutine getVelocity3
-        implicit none
-
-        do i=nFaceStr,nFaceEnd
-            lCell = i; rCell = i+1
-            wL(:) = (/cRho(lCell),cU(lCell),cP(lCell)/)
-            wR(:) = (/cRho(rCell),cU(rCell),cP(rCell)/)
-            CALL calfaceValAUSM(wL,wR,eosGamma, fMdot(i),fU(i),fP(i))
-            fMdot(i) = fMdot(i)*area(i)
-            fgP(i) = 0.5d0*(1.d0+dsign(1.d0,fU(i)))
-            fgN(i) = 0.5d0*(1.d0-dsign(1.d0,fU(i)))
-            fUx(i) = fgP(i)*cU(lCell) + fgN(i)*cU(rCell)
-        enddo
-        !> Calc. Matix of Linear System about Momentum Eq.
-        !> A*x=B
-        AmatMom(:,:) = 0.d0
-        do i=nCellStr,nCellEnd
-            lFace = i-1; rFace = i
-                !> | (i-1) |-> (i) |-> (i+1) |
-            AmatMom(i,i) = AmatMom(i,i) &
-                            + cRho(i)/timestep &
-                            + fMdot(rFace)*fgP(rFace) / cVol(i) &
-                            - fMdot(lFace)*fgN(lFace) / cVol(i)
-            if( i/=nCellStr ) then
-                AmatMom(i,i-1) = AmatMom(i,i-1) &
-                                - fMdot(lFace)*fgP(lFace) / cVol(i)
-            endif
-            if( i/=nCellEnd ) then
-                AmatMom(i,i+1) = AmatMom(i,i+1) &
-                                + fMdot(rFace)*fgN(rFace) / cVol(i)
-            endif
-            BmatMom1(i)   = oldcRho(i)*oldcU(i)/timestep
-            BmatMom2(i)   = ( fP(lFace)*area(lFace) &
-                            - fP(rFace)*area(rFace) ) / cVol(i)
-        enddo
-        !> inverse of AmatMom
-        CALL matInverse(AmatMom,nCellEnd)
-        !> Update to Velocity
-        coeffMom1(nCellStr:nCellEnd) = &
-                        matmul(AmatMom(nCellStr:nCellEnd,nCellStr:nCellEnd),&
-                                BmatMom1(nCellStr:nCellEnd))
-        coeffMom2(nCellStr:nCellEnd) = &
-                        matmul(AmatMom(nCellStr:nCellEnd,nCellStr:nCellEnd),&
-                                BmatMom2(nCellStr:nCellEnd))
-        cDu(nCellStr:nCellEnd) = ( coeffMom1(nCellStr:nCellEnd) &
-                                    -coeffMom2(nCellStr:nCellEnd) ) &
-                                    - cU(nCellStr:nCellEnd) 
-        cU(nCellStr:nCellEnd) = cU(nCellStr:nCellEnd) &
-                                + cDu(nCellStr:nCellEnd)
-    
-    
-    endsubroutine
-    
-    
-    
-    
-    subroutine getVelocity2
-        implicit none
-        
-        real(8) :: save_dummy(ncell)
-
-        do i=nFaceStr,nFaceEnd
-            lCell = i; rCell = i+1
-            wL(:) = (/cRho(lCell),cU(lCell),cP(lCell)/)
-            wR(:) = (/cRho(rCell),cU(rCell),cP(rCell)/)
-            CALL calfaceValAUSM(wL,wR,eosGamma, fMdot(i),fU(i),fP(i))
-        enddo
-        !> Calc. Matix of Linear System about Momentum Eq.
-        do i=nCellStr,nCellEnd
-            lFace = i-1; rFace = i
-            !BmatMom1(i)   = oldcRho(i)*oldcU(i)/timestep
-            BmatMom2(i)   = ( fP(lFace)*area(lFace) &
-                            - fP(rFace)*area(rFace) ) / cVol(i)
-        enddo
-        !> inverse of AmatMom
-        !CALL matInverse(AmatMom,nCellEnd)
-        !> Update to Velocity
-        !coeffMom1(nCellStr:nCellEnd) = &
-        !                matmul(AmatMom(nCellStr:nCellEnd,nCellStr:nCellEnd),&
-        !                        BmatMom1(nCellStr:nCellEnd))
-        
-        save_dummy(nCellStr:nCellEnd) = cU(nCellStr:nCellEnd)
-        
-        coeffMom2(nCellStr:nCellEnd) = &
-                        matmul(AmatMom(nCellStr:nCellEnd,nCellStr:nCellEnd),&
-                               BmatMom2(nCellStr:nCellEnd))
-        
-        cU(nCellStr:nCellEnd) = ( coeffMom1(nCellStr:nCellEnd) &
-                                 +coeffMom2(nCellStr:nCellEnd) ) 
-        
-        cDu(nCellStr:nCellEnd) = cU(nCellStr:nCellEnd) &
-                                -save_dummy(nCellStr:nCellEnd)
-    
-    
-    endsubroutine
+    !subroutine getVelocity3
+    !    implicit none
+    !
+    !    do i=nFaceStr,nFaceEnd
+    !        lCell = i; rCell = i+1
+    !        wL(:) = (/cRho(lCell),cU(lCell),cP(lCell)/)
+    !        wR(:) = (/cRho(rCell),cU(rCell),cP(rCell)/)
+    !        CALL calfaceValAUSM(wL,wR,eosGamma, fMdot(i),fU(i),fP(i))
+    !        fMdot(i) = fMdot(i)*area(i)
+    !        fgP(i) = 0.5d0*(1.d0+dsign(1.d0,fU(i)))
+    !        fgN(i) = 0.5d0*(1.d0-dsign(1.d0,fU(i)))
+    !        fUx(i) = fgP(i)*cU(lCell) + fgN(i)*cU(rCell)
+    !    enddo
+    !    !> Calc. Matix of Linear System about Momentum Eq.
+    !    !> A*x=B
+    !    AmatMom(:,:) = 0.d0
+    !    do i=nCellStr,nCellEnd
+    !        lFace = i-1; rFace = i
+    !            !> | (i-1) |-> (i) |-> (i+1) |
+    !        AmatMom(i,i) = AmatMom(i,i) &
+    !                        + cRho(i)/timestep &
+    !                        + fMdot(rFace)*fgP(rFace) / cVol(i) &
+    !                        - fMdot(lFace)*fgN(lFace) / cVol(i)
+    !        if( i/=nCellStr ) then
+    !            AmatMom(i,i-1) = AmatMom(i,i-1) &
+    !                            - fMdot(lFace)*fgP(lFace) / cVol(i)
+    !        endif
+    !        if( i/=nCellEnd ) then
+    !            AmatMom(i,i+1) = AmatMom(i,i+1) &
+    !                            + fMdot(rFace)*fgN(rFace) / cVol(i)
+    !        endif
+    !        BmatMom1(i)   = oldcRho(i)*oldcU(i)/timestep
+    !        BmatMom2(i)   = ( fP(lFace)*area(lFace) &
+    !                        - fP(rFace)*area(rFace) ) / cVol(i)
+    !    enddo
+    !    !> inverse of AmatMom
+    !    CALL matInverse(AmatMom,nCellEnd)
+    !    !> Update to Velocity
+    !    coeffMom1(nCellStr:nCellEnd) = &
+    !                    matmul(AmatMom(nCellStr:nCellEnd,nCellStr:nCellEnd),&
+    !                            BmatMom1(nCellStr:nCellEnd))
+    !    coeffMom2(nCellStr:nCellEnd) = &
+    !                    matmul(AmatMom(nCellStr:nCellEnd,nCellStr:nCellEnd),&
+    !                            BmatMom2(nCellStr:nCellEnd))
+    !    cDu(nCellStr:nCellEnd) = ( coeffMom1(nCellStr:nCellEnd) &
+    !                                -coeffMom2(nCellStr:nCellEnd) ) &
+    !                                - cU(nCellStr:nCellEnd) 
+    !    cU(nCellStr:nCellEnd) = cU(nCellStr:nCellEnd) &
+    !                            + cDu(nCellStr:nCellEnd)
+    !
+    !
+    !endsubroutine
+    !
+    !
+    !
+    !
+    !subroutine getVelocity2
+    !    implicit none
+    !    
+    !    real(8) :: save_dummy(ncell)
+    !
+    !    do i=nFaceStr,nFaceEnd
+    !        lCell = i; rCell = i+1
+    !        wL(:) = (/cRho(lCell),cU(lCell),cP(lCell)/)
+    !        wR(:) = (/cRho(rCell),cU(rCell),cP(rCell)/)
+    !        CALL calfaceValAUSM(wL,wR,eosGamma, fMdot(i),fU(i),fP(i))
+    !    enddo
+    !    !> Calc. Matix of Linear System about Momentum Eq.
+    !    do i=nCellStr,nCellEnd
+    !        lFace = i-1; rFace = i
+    !        !BmatMom1(i)   = oldcRho(i)*oldcU(i)/timestep
+    !        BmatMom2(i)   = ( fP(lFace)*area(lFace) &
+    !                        - fP(rFace)*area(rFace) ) / cVol(i)
+    !    enddo
+    !    !> inverse of AmatMom
+    !    !CALL matInverse(AmatMom,nCellEnd)
+    !    !> Update to Velocity
+    !    !coeffMom1(nCellStr:nCellEnd) = &
+    !    !                matmul(AmatMom(nCellStr:nCellEnd,nCellStr:nCellEnd),&
+    !    !                        BmatMom1(nCellStr:nCellEnd))
+    !    
+    !    save_dummy(nCellStr:nCellEnd) = cU(nCellStr:nCellEnd)
+    !    
+    !    coeffMom2(nCellStr:nCellEnd) = &
+    !                    matmul(AmatMom(nCellStr:nCellEnd,nCellStr:nCellEnd),&
+    !                           BmatMom2(nCellStr:nCellEnd))
+    !    
+    !    cU(nCellStr:nCellEnd) = ( coeffMom1(nCellStr:nCellEnd) &
+    !                             +coeffMom2(nCellStr:nCellEnd) ) 
+    !    
+    !    cDu(nCellStr:nCellEnd) = cU(nCellStr:nCellEnd) &
+    !                            -save_dummy(nCellStr:nCellEnd)
+    !
+    !
+    !endsubroutine
     
     
     

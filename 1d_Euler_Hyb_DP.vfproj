@@ -24,14 +24,18 @@
 				<Tool Name="VFPostBuildEventTool"/>
 				<Tool Name="VFManifestTool" SuppressStartupBanner="true"/></Configuration></Configurations>
 	<Files>
-		<Filter Name="Header Files" Filter="fi;fd"/>
+		<Filter Name="Header Files" Filter="fi;fd">
+		<File RelativePath=".\config.in"/></Filter>
 		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
 		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
 		<File RelativePath=".\1d_Euler_Hyb_DP.f90"/>
+		<File RelativePath=".\libLinearSolver.f90"/>
 		<File RelativePath=".\modBC.f90"/>
 		<File RelativePath=".\modContinuity.f90"/>
 		<File RelativePath=".\modEnergy.f90"/>
 		<File RelativePath=".\modEOS.f90"/>
+		<File RelativePath=".\modFaceValues.f90"/>
+		<File RelativePath=".\modInput.f90"/>
 		<File RelativePath=".\modMomentum.f90"/>
 		<File RelativePath=".\modPressure.f90"/>
 		<File RelativePath=".\modResidual.f90"/>
