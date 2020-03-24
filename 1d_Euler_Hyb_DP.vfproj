@@ -28,17 +28,17 @@
 		<File RelativePath=".\config.in"/></Filter>
 		<Filter Name="Resource Files" Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"/>
 		<Filter Name="Source Files" Filter="f90;for;f;fpp;ftn;def;odl;idl">
-		<File RelativePath=".\1d_Euler_Hyb_DP.f90"/>
-		<File RelativePath=".\libLinearSolver.f90"/>
-		<File RelativePath=".\modBC.f90"/>
-		<File RelativePath=".\modContinuity.f90"/>
-		<File RelativePath=".\modEnergy.f90"/>
-		<File RelativePath=".\modEOS.f90"/>
-		<File RelativePath=".\modFaceValues.f90"/>
-		<File RelativePath=".\modInput.f90"/>
-		<File RelativePath=".\modMomentum.f90"/>
-		<File RelativePath=".\modPressure.f90"/>
-		<File RelativePath=".\modResidual.f90"/>
-		<File RelativePath=".\modValues.f90"/></Filter>
+		<File RelativePath=".\src\1d_Euler_Hyb_DP.f90"/>
+		<File RelativePath=".\lib\libLinearSolver.f90"/>
+		<File RelativePath=".\src\modBC.f90"/>
+		<File RelativePath=".\src\modContinuity.f90"/>
+		<File RelativePath=".\src\modEnergy.f90"/>
+		<File RelativePath=".\src\modEOS.f90"/>
+		<File RelativePath=".\src\modFaceValues.f90"/>
+		<File RelativePath=".\src\modInput.f90"/>
+		<File RelativePath=".\src\modMomentum.f90"/>
+		<File RelativePath=".\src\modPressure.f90"/>
+		<File RelativePath=".\src\modResidual.f90"/>
+		<File RelativePath=".\src\modValues.f90"/></Filter>
 		<File RelativePath=".\ReadMe.txt"/></Files>
 	<Globals/></VisualStudioProject>

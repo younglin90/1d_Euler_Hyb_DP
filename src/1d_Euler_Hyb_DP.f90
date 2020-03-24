@@ -153,7 +153,7 @@ program Euler
     
     
     !/////////////////////////////////
-    open(20,file='a.dat')!,status='old',position='append')
+    open(20,file='./plot/result.dat')!,status='old',position='append')
     do i=nCellStr,nCellEnd
         WRITE( 20, '(20(F20.9, 1X))' ) cX(i),cRho(i),cU(i),cP(i),cT(i)
     enddo
