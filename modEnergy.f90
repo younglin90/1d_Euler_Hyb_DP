@@ -13,7 +13,7 @@ module modEnergy
         character(len=*) :: solMethod
 
         if( trim(solMethod) == 'explicit' ) then
-         !   CALL getRho_explicit
+            CALL getT_explicit
         elseif( trim(solMethod) == 'implicit' ) then
             CALL getT_implicit
         endif
@@ -28,30 +28,20 @@ module modEnergy
         
         real(8) :: save_dummy(ncell)
         real(8) :: fL_cdp,fR_cdp,fL_drdp,fR_drdp,Rgas,lfs,rfs
-        real(8) :: lfdt,rfdt,dhdT,dedT,lfHt,rfHt,calEt
+        real(8) :: lfdt,rfdt,dhdT,dedT,lfHt,rfHt,calHt
         
-        !!> Variables initialization AUSM+
-        !do i=nFaceStr,nFaceEnd
-        !    lCell = i; rCell = i+1
-        !    wL(i,:) = (/cRho(lCell),cU(lCell),cP(lCell)/)
-        !    wR(i,:) = (/cRho(rCell),cU(rCell),cP(rCell)/)
-        !    CALL calfaceValAUSM(wL(i,:),wR(i,:),eosGamma, fMdot(i),fU(i),fP(i))
-        !    fMdot(i) = fMdot(i)*area(i)
-        !    fgP(i) = 0.5d0*(1.d0+dsign(1.d0,fU(i)))
-        !    fgN(i) = 0.5d0*(1.d0-dsign(1.d0,fU(i)))
-        !enddo
-        CALL getFaceValues(ReconMethod=chReconT,&
-            FluxMethod=chFluxT,calfgP='on',calfgN='on')
+        CALL getFaceValues(&
+            FaceMethodU=chFluxU &
+            )
         
         !> Update to Temperature
-        AmatEnr = 0.d0
         do i=nCellStr,nCellEnd
             lFace = i-1; rFace = i 
             
             dhdT = eosCp
-            dedT = eosCp/eosGamma
+            !dedT = eosCp/eosGamma
             
-            AmatEnr(i,i) = cRho(i)*dedT/timestep &
+            AmatEnr(i,i) = cRho(i)*dhdT/timestep &
                 - fgN(lFace)*dhdT*fMdot(lFace)/cVol(i) &
                 + fgP(rFace)*dhdT*fMdot(rFace)/cVol(i)
             if( i/=nCellStr ) then
@@ -67,9 +57,10 @@ module modEnergy
             rfHt = fgP(rFace)*oldcHt(i)  + fgN(rFace)*oldcHt(i+1)
             
             !> @todo : calc. Et 
-            calEt = eosCp/eosGamma*cT(i) + 0.5d0*(cU(i)**2.d0)
+            calHt = eosCp*cT(i) + 0.5d0*(cU(i)**2.d0)
             BmatEnr(i) = &
-                -( cRho(i)*calEt - oldCons(i,3) )/timestep &
+                -( cRho(i)*calHt - oldcRho(i)*oldcHt(i) )/timestep &
+                +( cP(i) - oldcP(i) )/timestep &
                 +1.d0/cVol(i)*( fMdot(lFace)*lfHt - fMdot(rFace)*rfHt )
         enddo
         !> inverse of A matrix
@@ -84,6 +75,41 @@ module modEnergy
         !> T update
         cT(nCellStr:nCellEnd) = cT(nCellStr:nCellEnd) + cDT(nCellStr:nCellEnd)
         
+        
+    endsubroutine
+    
+
+    !========================================================
+    subroutine getT_explicit
+        use modFaceValues
+        implicit none
+        
+        real(8) :: save_dummy(ncell)
+        real(8) :: fL_cdp,fR_cdp,fL_drdp,fR_drdp,Rgas,lfs,rfs
+        real(8) :: lfdt,rfdt,dhdT,dedT,lfHt,rfHt,calHt
+        
+        CALL getFaceValues(&
+            FaceMethodU=chFluxU &
+            )
+        
+        !> Update to Density
+        do i=nCellStr,nCellEnd
+            lFace = i-1; rFace = i
+                
+            dhdT = eosCp
+            
+            lfHt = fgP(lFace)*(cT(i-1)*eosCp+0.5d0*cU(i-1)**2.d0) &
+                 + fgN(lFace)*(cT(i)*eosCp+0.5d0*cU(i)**2.d0)
+            rfHt = fgP(rFace)*(cT(i)*eosCp+0.5d0*cU(i)**2.d0) &
+                 + fgN(rFace)*(cT(i+1)*eosCp+0.5d0*cU(i+1)**2.d0)
+            
+            cDT(i) = &
+                -(cRho(i)*cHt(i)-oldcRho(i)*oldcHt(i))/timestep&
+                +(cP(i)-oldcP(i))/timestep &
+                +1.d0/cVol(i)*( fMdot(lFace)*lfHt - fMdot(rFace)*rfHt )
+            cDT(i) = underRelaxFactT*cDT(i)/cRho(i)/dhdT*timestep
+            cT(i) =  cT(i) + cDT(i)
+        enddo
         
     endsubroutine
     

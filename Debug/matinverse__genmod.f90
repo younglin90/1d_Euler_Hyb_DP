@@ -1,4 +1,4 @@
-        !COMPILER-GENERATED INTERFACE MODULE: Mon Mar 23 22:27:13 2020
+        !COMPILER-GENERATED INTERFACE MODULE: Tue Mar 24 14:32:12 2020
         ! This source file is for reference only and may not completely
         ! represent the generated interface used by the compiler.
         MODULE MATINVERSE__genmod

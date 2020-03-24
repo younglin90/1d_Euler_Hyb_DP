@@ -13,17 +13,17 @@ module modPressure
         character(len=*) :: solMethod
 
         if( trim(solMethod) == 'explicit' ) then
-         !   CALL getRho_explicit
+         !   CALL getP_explicit
             stop
         elseif( trim(solMethod) == 'implicit' ) then
-            CALL getP_test
+            CALL getP_implicit
         endif
 
     endsubroutine
     
 
     !========================================================
-    subroutine getP_test
+    subroutine getP_implicit
         use modFaceValues
         implicit none
         
@@ -31,27 +31,10 @@ module modPressure
         real(8) :: fL_cdp,fR_cdp,fL_drdp,fR_drdp,Rgas,lfs,rfs
         real(8) :: lPFlux,rPFlux,rRhoflux,lRhoflux
         
-        !!> Variables initialization AUSM+
-        !do i=nFaceStr,nFaceEnd
-        !    lCell = i; rCell = i+1
-        !    wL(i,:) = (/cRho(lCell),cU(lCell),cP(lCell)/)
-        !    wR(i,:) = (/cRho(rCell),cU(rCell),cP(rCell)/)
-        !    CALL calfaceValAUSM(wL(i,:),wR(i,:),eosGamma, fMdot(i),fU(i),fP(i))
-        !    fMdot(i) = fMdot(i)*area(i)
-        !    fgP(i) = 0.5d0*(1.d0+dsign(1.d0,fU(i)))
-        !    fgN(i) = 0.5d0*(1.d0-dsign(1.d0,fU(i)))
-        !    fUx(i) = fgP(i)*cU(lCell)  + fgN(i)*cU(rCell)
-        !    fcoeffMom1(i) = fgP(i)*coeffMom1(lCell) + fgN(i)*coeffMom1(rCell)
-        !    fcoeffMom2(i) = fgP(i)*coeffMom2(lCell) + fgN(i)*coeffMom2(rCell)
-        !    fRho(i) = fgP(i)*cRho(lCell) + fgN(i)*cRho(rCell)
-        !    fDrDp(i) = fgP(i)*cDrDp(lCell) + fgN(i)*cDrDp(rCell)
-        !enddo
+        CALL getFaceValues(&
+            FaceMethodU=chFluxU &
+            )
         
-        CALL getFaceValues(ReconMethod=chReconP,&
-            FluxMethod=chFluxP,calfgP='on',calfgN='on',calfUx='on',&
-            calfCM1='on',calfCM2='on',calfRho='on',calfDrDp='on')
-        
-        AmatPres = 0.d0
         do i=nCellStr,nCellEnd
             lFace = i-1; rFace = i
                 

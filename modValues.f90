@@ -125,6 +125,10 @@ module modValues
                   BmatEnr(nCellEnd), &
                   AmatCon(nCellEnd,nCellEnd), &
                   BmatCon(nCellEnd) )
+        AmatPres = 0.d0
+        AmatMom = 0.d0
+        AmatEnr = 0.d0
+        AmatCon = 0.d0
     endsubroutine
     
 endmodule

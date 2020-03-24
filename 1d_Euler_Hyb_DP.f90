@@ -75,20 +75,19 @@ program Euler
         do i=nTCellStr,nTCellEnd
             oldCons(i,1) = cRho(i) 
             oldCons(i,2) = cRho(i)*cU(i) 
-            oldCons(i,3) = cRho(i)*cEt(i) 
+            oldCons(i,3) = cRho(i)*cHt(i)-cP(i)
             
             oldcRho(i) = cRho(i)
             oldcU(i)   = cU(i)
             oldcP(i)   = cP(i)
             oldcT(i)   = cT(i)
-            oldcEt(i)  = cEt(i)
             oldcHt(i)  = cHt(i)
         enddo
         
         
         !======================== 1 ==========================
         !> Continuity Equation -> Density Prediction
-        CALL getContinuity('implicit')
+        CALL getContinuity('explicit')
         
 
         SIMPLE: do iterSIMPLE = 1,iterMaxSIMPLE
@@ -104,11 +103,11 @@ program Euler
         
                 !======================== 3 ==========================
                 !> Energy Equation -> Temperature Prediction
-                CALL getEnergy('implicit')
+                CALL getEnergy('explicit')
 
                 !======================== 4 ==========================
                 !> Equation of State -> update Thermodynamic variables
-                CALL getEOS(eosRho='on',eosEt='on',eosHt='on')
+                CALL getEOS(eosRho='on',eosHt='on')
                 
                 !======================== 5 ==========================
                 !> Pressure Equation (Continuity + Momentum) 
@@ -117,15 +116,11 @@ program Euler
 
                 !======================== 7 ==========================
                 !> Momentum Equation => update Velocity
-                CALL getMomentum('dp_to_u')
+                CALL getMomentum('dP_to_U')
                 
                 !======================== 6 ==========================
                 !> Equation of State => update Density
-                CALL getEOS(eosRho='on',eosEt='on',eosHt='on')
-
-                !=======================
-                !CALL getEnergy('implicit')
-                !CALL getContinuity('implicit')
+                CALL getEOS(eosRho='on',eosHt='on')
         
                 !====================================================
                 !> Monitor of Residuals
@@ -133,13 +128,12 @@ program Euler
 
 
             enddo PISO !> End iteration
-            
 
             !====================================================
-            CALL getEnergy('implicit')
+            CALL getEnergy('explicit')
             
             !====================================================
-            CALL getContinuity('implicit')
+            CALL getContinuity('explicit')
     
     
         enddo SIMPLE !> End iteration
