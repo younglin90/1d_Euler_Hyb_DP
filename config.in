@@ -1,19 +1,22 @@
 &input
 nCell = 100
+nspe = 2
 time_max = 0.2 !sec
-eosGamma = 1.4 ! air
-eosCp = 1004.d0
 len = 1.0 ! m, x-length
+
 iterMaxSIMPLE = 5
 iterMaxPISO = 3
-chReconP = '3thMUSCL'    ! 1stOrder, 3thMUSCL
-chReconU = '3thMUSCL'
-chReconR = '3thMUSCL'
-chFluxU = 'SLAU'     ! AUSM, SLAU
+chReconP = '1stOrder'    ! 1stOrder, 3thMUSCL
+chReconU = '1stOrder'
+chReconT = '1stOrder'
+chReconR = '1stOrder'
+chReconY = '1stOrder'
+chFluxU = 'AUSM'     ! AUSM, SLAU
 chFluxP = 'AUSM'    ! AUSM, SLAU2, SecOrder
 underRelaxFactP = 0.3d0
 underRelaxFactT = 0.9d0
 underRelaxFactR = 1.0d0
 underRelaxFactU = 0.7d0
+
 timestep = 2.d-3
 /

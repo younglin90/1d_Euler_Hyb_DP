@@ -1,0 +1,18 @@
+&inputSpec
+
+chEOS(1) = 'Ideal'
+eosCp(1) = 1004.d0
+eosGamma(1) = 1.4d0
+eosCv(1) = 717.1d0
+eosB(1) = 0.d0
+eosQ(1) = 0.d0
+eosPinf(1) = 0.d0
+
+chEOS(2) = 'NASG'
+eosCp(2) = 4285.d0
+eosGamma(2) = 1.19d0
+eosCv(2) = 3610.d0
+eosB(2) = 6.7212d-4
+eosQ(2) = -1177788.d0
+eosPinf(2) = 621780000.d0
+/

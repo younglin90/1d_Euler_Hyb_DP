@@ -40,15 +40,15 @@ module modPressure
                 
             dPN = dx
             
-            Rgas = eosCp*(1.d0-1.d0/eosGamma)
+            !Rgas = eosCp*(1.d0-1.d0/eosGamma)
             
             !> @todo : 1/R/T => drdp
-            lFs = fU(lFace)*( fgP(lFace)*(1.d0/Rgas/cT(i-1)) &
-                             +fgN(lFace)*(1.d0/Rgas/cT(i)) )
-            rFs = fU(rFace)*( fgP(rFace)*(1.d0/Rgas/cT(i)) &
-                             +fgN(rFace)*(1.d0/Rgas/cT(i+1)) )
+            lFs = fU(lFace)*( fgP(lFace)*cDRDP(i-1) &
+                             +fgN(lFace)*cDRDP(i) )
+            rFs = fU(rFace)*( fgP(rFace)*cDRDP(i) &
+                             +fgN(rFace)*cDRDP(i+1) )
             
-            AmatPres(i,i) = (1.d0/Rgas/cT(i))/timestep
+            AmatPres(i,i) = cDRDP(i)/timestep
             AmatPres(i,i) = AmatPres(i,i) &
                 + 1.d0/cVol(i)*( rFs*(fgP(rFace))*area(rFace) &
                                - lFs*(fgN(lFace))*area(lFace) )&

@@ -27,7 +27,6 @@ module modContinuity
     subroutine getRho_implicit
         use modFaceValues
         implicit none
-        real(8) :: Rgas
 
         CALL getFaceValues(&
             FaceMethodU=chFluxU &
@@ -36,8 +35,6 @@ module modContinuity
         !> Update to Density
         do i=nCellStr,nCellEnd
             lFace = i-1; rFace = i 
-            
-            Rgas = eosCp*(1.d0-1.d0/eosGamma)
             
             AmatCon(i,i) = 1.d0/timestep &
                 - fgN(lFace)*fU(lFace)*area(lFace)/cVol(i) &

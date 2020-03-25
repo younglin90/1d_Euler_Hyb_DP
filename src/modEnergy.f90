@@ -38,7 +38,7 @@ module modEnergy
         do i=nCellStr,nCellEnd
             lFace = i-1; rFace = i 
             
-            dhdT = eosCp
+            dhdT = cDHDT(i) !eosCp
             !dedT = eosCp/eosGamma
             
             AmatEnr(i,i) = cRho(i)*dhdT/timestep &
@@ -57,7 +57,7 @@ module modEnergy
             rfHt = fgP(rFace)*oldcHt(i)  + fgN(rFace)*oldcHt(i+1)
             
             !> @todo : calc. Et 
-            calHt = eosCp*cT(i) + 0.5d0*(cU(i)**2.d0)
+            calHt = cHt(i) !eosCp*cT(i) + 0.5d0*(cU(i)**2.d0)
             BmatEnr(i) = &
                 -( cRho(i)*calHt - oldcRho(i)*oldcHt(i) )/timestep &
                 +( cP(i) - oldcP(i) )/timestep &
@@ -86,7 +86,7 @@ module modEnergy
         
         real(8) :: save_dummy(ncell)
         real(8) :: fL_cdp,fR_cdp,fL_drdp,fR_drdp,Rgas,lfs,rfs
-        real(8) :: lfdt,rfdt,dhdT,dedT,lfHt,rfHt,calHt
+        real(8) :: lfdt,rfdt,dedT,lfHt,rfHt,calHt
         
         CALL getFaceValues(&
             FaceMethodU=chFluxU &
@@ -96,18 +96,17 @@ module modEnergy
         do i=nCellStr,nCellEnd
             lFace = i-1; rFace = i
                 
-            dhdT = eosCp
             
-            lfHt = fgP(lFace)*(cT(i-1)*eosCp+0.5d0*cU(i-1)**2.d0) &
-                 + fgN(lFace)*(cT(i)*eosCp+0.5d0*cU(i)**2.d0)
-            rfHt = fgP(rFace)*(cT(i)*eosCp+0.5d0*cU(i)**2.d0) &
-                 + fgN(rFace)*(cT(i+1)*eosCp+0.5d0*cU(i+1)**2.d0)
+            lfHt = fgP(lFace)*(cT(i-1)*cDHDT(i-1)+0.5d0*cU(i-1)**2.d0) &
+                 + fgN(lFace)*(cT(i)*cDHDT(i)+0.5d0*cU(i)**2.d0)
+            rfHt = fgP(rFace)*(cT(i)*cDHDT(i)+0.5d0*cU(i)**2.d0) &
+                 + fgN(rFace)*(cT(i+1)*cDHDT(i+1)+0.5d0*cU(i+1)**2.d0)
             
             cDT(i) = &
                 -(cRho(i)*cHt(i)-oldcRho(i)*oldcHt(i))/timestep&
                 +(cP(i)-oldcP(i))/timestep &
                 +1.d0/cVol(i)*( fMdot(lFace)*lfHt - fMdot(rFace)*rfHt )
-            cDT(i) = underRelaxFactT*cDT(i)/cRho(i)/dhdT*timestep
+            cDT(i) = underRelaxFactT*cDT(i)/cRho(i)/cDHDT(i)*timestep
             cT(i) =  cT(i) + cDT(i)
         enddo
         

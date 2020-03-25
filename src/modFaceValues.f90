@@ -2,6 +2,7 @@
 module modFaceValues
 
     use modValues
+    use modEOS
     implicit none
     
     contains
@@ -14,23 +15,45 @@ module modFaceValues
             FaceMethodU,FaceMethodP,&
             calfUx,calfCM1,calfCM2,calfRho,calfDrDp
         integer :: lmCell,rpCell
+        real(8) :: leftcRho,leftcC,leftcHt,rightcRho,rightcC,rightcHt,eosY(nspe)
+        
         
         do i=nFaceStr,nFaceEnd
             lmCell = max(nFaceStr,i-1); lCell = i
             rCell = i+1; rpCell = min(nFaceEnd,i+2)
             
             CALL getRecon(chReconP,cP(lmCell),cP(lCell),cP(rCell),cP(rpCell),&
-                        wL(i,3),wR(i,3))
+                        wL(i,1),wR(i,1))
             CALL getRecon(chReconU,cU(lmCell),cU(lCell),cU(rCell),cU(rpCell),&
                         wL(i,2),wR(i,2))
-            CALL getRecon(chReconR,cRho(lmCell),cRho(lCell),cRho(rCell),cRho(rpCell),&
-                        wL(i,1),wR(i,1))
+            CALL getRecon(chReconT,cT(lmCell),cT(lCell),cT(rCell),cT(rpCell),&
+                        wL(i,3),wR(i,3))
+            do nq=1,nspe-1
+                CALL getRecon(chReconY,cY(lmCell,nq),cY(lCell,nq),&
+                    cY(rCell,nq),cY(rpCell,nq),&
+                    wL(i,3+nq),wR(i,3+nq))
+            enddo
+            
+            forall(nq=1:nspe-1) wL(i,3+nq) = dmax1( 0.d0 , dmin1( 1.d0, wL(i,3+nq) ) )
+            wL(i,3+nspe) = 1.d0 - sum( wL(i,4:2+nspe) )
+            wL(i,3+nspe) = dmax1( 0.d0 , dmin1( 1.d0, wL(i,3+nspe) ) )
+            forall(nq=1:nspe-1) wR(i,3+nq) = dmax1( 0.d0 , dmin1( 1.d0, wR(i,3+nq) ) )
+            wR(i,3+nspe) = 1.d0 - sum( wR(i,4:2+nspe) )
+            wR(i,3+nspe) = dmax1( 0.d0 , dmin1( 1.d0, wR(i,3+nspe) ) )
+            
+            !> get Rho, C, Ht
+            CALL getRCH(wL(i,1),wL(i,2),wL(i,3),wL(i,4:3+nspe), leftcRho,leftcC,leftcHt)
+            CALL getRCH(wR(i,1),wR(i,2),wR(i,3),wR(i,4:3+nspe), rightcRho,rightcC,rightcHt)
             !
             !> face U, Mdot
             if( trim(FaceMethodU) == 'AUSM' ) then
-                CALL calfaceVelAUSM(wL(i,:),wR(i,:),eosGamma, fU(i))
+                CALL calfaceVelAUSM(&
+                    wL(i,1),wL(i,2),wL(i,3),leftcRho,leftcC,&
+                    wR(i,1),wR(i,2),wR(i,3),rightcRho,rightcC, fU(i))
             elseif( trim(FaceMethodU) == 'SLAU' ) then
-                CALL calfaceVelSLAU(wL(i,:),wR(i,:),eosGamma, fU(i))
+                CALL calfaceVelSLAU(&
+                    wL(i,1),wL(i,2),wL(i,3),leftcRho,leftcC,&
+                    wR(i,1),wR(i,2),wR(i,3),rightcRho,rightcC, fU(i))
             else
                 print*,'  ReconMethod not defined'
                 stop
@@ -39,17 +62,23 @@ module modFaceValues
             fgP(i) = 0.5d0*(1.d0+dsign(1.d0,fU(i)))
             fgN(i) = 0.5d0*(1.d0-dsign(1.d0,fU(i)))
             !> Mdot, upwind
-            fMdot(i) = wL(i,1)*fU(i)*fgP(i)*area(i) &
-                     + wR(i,1)*fU(i)*fgN(i)*area(i)
+            fMdot(i) = leftcRho*fU(i)*fgP(i)*area(i) &
+                     + rightcRho*fU(i)*fgN(i)*area(i)
             
             !> face P
             if( present(FaceMethodP) ) then
                 if( trim(FaceMethodP) == 'AUSM' ) then
-                    CALL calFacePressAUSM(wL(i,:),wR(i,:),eosGamma, fP(i))
+                    CALL calFacePressAUSM(&
+                        wL(i,1),wL(i,2),wL(i,3),leftcRho,leftcC,&
+                        wR(i,1),wR(i,2),wR(i,3),rightcRho,rightcC, fP(i))
                 elseif( trim(FaceMethodP) == 'SLAU2' ) then
-                    CALL calFacePressSLAU(wL(i,3),wR(i,3),eosGamma, fP(i))
+                    CALL calFacePressSLAU(&
+                        wL(i,1),wL(i,2),wL(i,3),leftcRho,leftcC,&
+                        wR(i,1),wR(i,2),wR(i,3),rightcRho,rightcC, fP(i))
                 elseif( trim(FaceMethodP) == 'SecOrder' ) then
-                    CALL calFacePressSecOrder(wL(i,3),wR(i,3), fP(i))
+                    CALL calFacePressSecOrder(&
+                        wL(i,1),wL(i,2),wL(i,3),leftcRho,leftcC,&
+                        wR(i,1),wR(i,2),wR(i,3),rightcRho,rightcC, fP(i))
                 else
                     print*,'  ReconMethod not defined'
                     stop
@@ -69,7 +98,6 @@ module modFaceValues
                 fDrDp(i) = fgP(i)*cDrDp(lCell) + fgN(i)*cDrDp(rCell)
             
         enddo
-        
     endsubroutine
 
     !================================
@@ -93,23 +121,21 @@ module modFaceValues
         
         
     !================================
-    subroutine calFacePressSecOrder(fPL,fPR, pLR)
+    subroutine calFacePressSecOrder(fPL,fUL,fTL,fRhoL,fCL,fPR,fUR,fTR,fRhoR,fCR, pLR)
 
         implicit none
     
-        real(8), intent(in) :: fPL,fPR
+        real(8), intent(in) :: fPL,fUL,fTL,fRhoL,fCL,fPR,fUR,fTR,fRhoR,fCR
         real(8), intent(out):: pLR
-        real(8) :: revAmatMom,cPrevAmatMom,revLAmatMom,revRAmatMom,&
-            Rgas
+        real(8) :: revAmatMom,cPrevAmatMom,revLAmatMom,revRAmatMom
         integer :: lmCell,rpCell
 
         lmCell = max(nFaceStr,i-1); lCell = i
         rCell = i+1; rpCell = min(nFaceEnd,i+2)
 
-        Rgas = eosCp*(1.d0-1.d0/eosGamma)
         
-        revLAmatMom = 1.d0/( (1.d0/Rgas/cT(lCell))/timestep )
-        revRAmatMom = 1.d0/( (1.d0/Rgas/cT(rCell))/timestep )
+        revLAmatMom = 1.d0/( cDRDP(lCell)/timestep )
+        revRAmatMom = 1.d0/( cDRDP(rCell)/timestep )
         revAmatMom = revLAmatMom + revRAmatMom
         cPrevAmatMom = fPL*revLAmatMom + fPR*revRAmatMom
         
@@ -121,28 +147,20 @@ module modFaceValues
 
 
     !================================
-    subroutine calFaceVelAUSM(wL,wR,gamma, uLR)
+    subroutine calFaceVelAUSM(fPL,fUL,fTL,fRhoL,fCL,fPR,fUR,fTR,fRhoR,fCR, uLR)
 
         implicit none
     
-        real(8), dimension(3) :: wL, wR
-        real(8) :: gamma
-        real(8) :: uLR
-        real(8) :: rho_L,rho_R,u_L,u_R,p_L,p_R,c_L,c_R, &
-         chat,M_L,M_R,MLP,preP,MRM,preM
+        real(8) :: fPL,fUL,fTL,fRhoL,fCL,fPR,fUR,fTR,fRhoR,fCR
+        real(8) :: uLR,M_L,M_R,MLP,MRM,chat
     
         ! AUSM+ scheme
         ! wL : left value of cell interface (face)
         ! wR : right
-        rho_L = wL(1); rho_R = wR(1)
-        u_L = wL(2); u_R = wR(2)
-        p_L = wL(3); p_R = wR(3)
-    
-        c_L = sqrt(gamma*p_L/rho_L); c_R = sqrt(gamma*p_R/rho_R)
         !----------------------------------------------------
     
-        chat = 0.5d0*(c_L+c_R)
-        M_L = u_L/chat; M_R = u_R/chat
+        chat = 0.5d0*(fCL+fCR)
+        M_L = fUL/chat; M_R = fUR/chat
     
         !------ numerical mass flux & pressure flux in AUSM+ scheme ------
         if( abs(M_L) > 1.0 ) then
@@ -162,12 +180,11 @@ module modFaceValues
     
 
     !================================
-    subroutine calFaceVelSLAU(wL,wR,gamma, uLR)
+    subroutine calFaceVelSLAU(fPL,fUL,fTL,fRhoL,fCL,fPR,fUR,fTR,fRhoR,fCR, uLR)
 
         implicit none
     
-        real(8), dimension(3) :: wL, wR
-        real(8) :: gamma
+        real(8) :: fPL,fUL,fTL,fRhoL,fCL,fPR,fUR,fTR,fRhoR,fCR
         real(8) :: uLR
         real(8) :: rho_L,rho_R,u_L,u_R,p_L,p_R,c_L,c_R, &
          chat,M_L,M_R,MLP,preP,MRM,preM,RhouLR,Mcy,phi_c,g_c,Mbar,&
@@ -176,44 +193,38 @@ module modFaceValues
         ! AUSM+ scheme
         ! wL : left value of cell interface (face)
         ! wR : right
-        rho_L = wL(1); rho_R = wR(1)
-        u_L = wL(2); u_R = wR(2)
-        p_L = wL(3); p_R = wR(3)
-    
-        c_L = sqrt(gamma*p_L/rho_L); c_R = sqrt(gamma*p_R/rho_R)
         !----------------------------------------------------
     
-        chat = 0.5d0*(c_L+c_R)
-        M_L = u_L/chat; M_R = u_R/chat
+        chat = 0.5d0*(fCL+fCR)
+        M_L = fUL/chat; M_R = fUR/chat
     
 	    ! !> SLAU
-        KLR = dsqrt(0.5d0*(u_L*u_L+u_R*u_R))
+        KLR = dsqrt(0.5d0*(fUL*fUL+fUR*fUR))
 	    Mcy = dmin1(1.d0,KLR/chat)
 	    phi_c = (1.d0-Mcy)**2.d0 
 	    g_c = 1.d0 + dmax1( dmin1(M_L,0.d0), -1.d0 )*dmin1( dmax1(M_R,0.d0), 1.d0 ) 
-        Mbar = ( rho_L*dabs(M_L)+rho_R*dabs(M_R) ) / ( rho_L + rho_R )
+        Mbar = ( fRhoL*dabs(M_L)+fRhoR*dabs(M_R) ) / ( fRhoL + fRhoR )
 
         D_L = M_L+(1.d0-g_c)*dabs(M_L) 
         D_R = M_R-(1.d0-g_c)*dabs(M_R)
         D_rho = Mbar*g_c
         D_P = 1.d0/chat**2.d0*phi_c
 
-        RhouLR = 0.5d0*chat*(D_L*rho_L+D_R*rho_R-D_rho*(rho_R-rho_L)-D_P*(p_R-p_L))
+        RhouLR = 0.5d0*chat*(D_L*fRhoL+D_R*fRhoR-D_rho*(fRhoR-fRhoL)-D_P*(fPR-fPL))
 	    if( RhouLR >= 0.d0 ) then
-            uLR = RhouLR/rho_L
+            uLR = RhouLR/fRhoL
         else
-            uLR = RhouLR/rho_R
+            uLR = RhouLR/fRhoR
         endif
 
     endsubroutine
     
     !================================
-    subroutine calFacePressAUSM(wL,wR,gamma, pLR)
+    subroutine calFacePressAUSM(fPL,fUL,fTL,fRhoL,fCL,fPR,fUR,fTR,fRhoR,fCR, pLR)
 
         implicit none
     
-        real(8), dimension(3), intent(in) :: wL, wR
-        real(8), intent(in) :: gamma
+        real(8), intent(in) :: fPL,fUL,fTL,fRhoL,fCL,fPR,fUR,fTR,fRhoR,fCR
         real(8), intent(out):: pLR
         real(8) :: rho_L,rho_R,u_L,u_R,p_L,p_R,c_L,c_R, &
         H_L,H_R,chat,M_L,M_R,MLP,preP,MRM,preM,mdot
@@ -221,15 +232,10 @@ module modFaceValues
         ! AUSM+ scheme
         ! wL : left value of cell interface (face)
         ! wR : right
-        rho_L = wL(1); rho_R = wR(1)
-        u_L = wL(2); u_R = wR(2)
-        p_L = wL(3); p_R = wR(3)
-    
-        c_L = sqrt(gamma*p_L/rho_L); c_R = sqrt(gamma*p_R/rho_R)
         !----------------------------------------------------
     
-        chat = 0.5d0*(c_L+c_R)
-        M_L = u_L/chat; M_R = u_R/chat
+        chat = 0.5d0*(fCL+fCR)
+        M_L = fUL/chat; M_R = fUR/chat
     
         !------ numerical mass flux & pressure flux in AUSM+ scheme ------
         if( abs(M_L) > 1.0 ) then
@@ -242,18 +248,17 @@ module modFaceValues
         else
             preM = 0.25*(M_R-1.0)**2.0*(2.0+M_R)
         endif
-        pLR = preP*p_L+preM*p_R
+        pLR = preP*fPL+preM*fPR
 
     endsubroutine
 
     
     !================================
-    subroutine calFacePressSLAU(wL,wR,gamma, pLR)
+    subroutine calFacePressSLAU(fPL,fUL,fTL,fRhoL,fCL,fPR,fUR,fTR,fRhoR,fCR, pLR)
 
         implicit none
     
-        real(8), dimension(3), intent(in) :: wL, wR
-        real(8), intent(in) :: gamma
+        real(8), intent(in) :: fPL,fUL,fTL,fRhoL,fCL,fPR,fUR,fTR,fRhoR,fCR
         real(8), intent(out):: pLR
         real(8) :: rho_L,rho_R,u_L,u_R,p_L,p_R,c_L,c_R, &
         H_L,H_R,chat,M_L,M_R,MLP,preP,MRM,preM,mdot,KLR,rhohat
@@ -261,15 +266,10 @@ module modFaceValues
         ! AUSM+ scheme
         ! wL : left value of cell interface (face)
         ! wR : right
-        rho_L = wL(1); rho_R = wR(1)
-        u_L = wL(2); u_R = wR(2)
-        p_L = wL(3); p_R = wR(3)
-    
-        c_L = sqrt(gamma*p_L/rho_L); c_R = sqrt(gamma*p_R/rho_R)
         !----------------------------------------------------
     
-        chat = 0.5d0*(c_L+c_R)
-        M_L = u_L/chat; M_R = u_R/chat
+        chat = 0.5d0*(fCL+fCR)
+        M_L = fUL/chat; M_R = fUR/chat
     
         !------ numerical mass flux & pressure flux in AUSM+ scheme ------
         if( abs(M_L) > 1.0 ) then
@@ -282,10 +282,10 @@ module modFaceValues
         else
             preM = 0.25*(M_R-1.0)**2.0*(2.0+M_R)
         endif
-        KLR = dsqrt(0.5d0*(u_L*u_L+u_R*u_R))
-        rhohat = 0.5d0*(rho_L+rho_R)
-	    PLR = 0.5d0*(p_L+p_R) &
-              + 0.5d0*(p_L-p_R)*(preP-preM)   &
+        KLR = dsqrt(0.5d0*(fUL*fUL+fUR*fUR))
+        rhohat = 0.5d0*(fRhoL+fRhoR)
+	    PLR = 0.5d0*(fPL+fPR) &
+              + 0.5d0*(fPL-fPR)*(preP-preM)   &
 		      + KLR*rhohat*chat*(preP+preM-1.d0)  
 
     endsubroutine

@@ -29,6 +29,9 @@ program Euler
     
     CALL getAllocate()
     
+    CALL getInputSpec()
+    
+    
     !-------- one-dimensional Mesh
     dx = len/real(ncell,8)
     do i=nTCellStr,nTCellEnd
@@ -45,21 +48,21 @@ program Euler
     do i=nTCellStr,nTCellEnd
       !> sod shock condition
       if( cX(i) < 0.5d0 ) then
-          cRho(i) = 1.000d0
-          cU(i)   = 0.000d0
           cP(i)   = 1.000d0
-      else
-          cRho(i) = 0.125d0
           cU(i)   = 0.000d0
+          cT(i)   = 0.003486055811614
+      else
           cP(i)   = 0.100d0
+          cU(i)   = 0.000d0
+          cT(i)   = 0.002788844649291
       endif
     enddo
     !--------- BC
     CALL getBC(leftBC='supBC',rightBC='supBC')
     
     !--------- Ht, Et, T, c from EOS
-    CALL getEOS(eosT='on',eosC='on',eosEt='on',eosHt='on',eosDRDP='on')
-    
+    CALL getEOS(eosRho='on',eosHt='on',eosDRDP='on',eosDRDT='on',&
+                eosDHDP='on',eosDHDT='on',eosC='on')
     time = 0.d0
     nstep = 0
     ntimestep=0
@@ -107,7 +110,7 @@ program Euler
 
                 !======================== 4 ==========================
                 !> Equation of State -> update Thermodynamic variables
-                CALL getEOS(eosRho='on',eosHt='on')
+                CALL getEOS(eosRho='on',eosHt='on',eosDRDP='on')
                 
                 !======================== 5 ==========================
                 !> Pressure Equation (Continuity + Momentum) 
@@ -120,7 +123,7 @@ program Euler
                 
                 !======================== 6 ==========================
                 !> Equation of State => update Density
-                CALL getEOS(eosRho='on',eosHt='on')
+                CALL getEOS(eosRho='on',eosHt='on',eosDHDT='on')
         
                 !====================================================
                 !> Monitor of Residuals
@@ -145,7 +148,7 @@ program Euler
         
         !=======================================================
         !> Equation of State => update thermodynamics
-        CALL getEOS(eosEt='on',eosHt='on',eosDRDP='on')
+        CALL getEOS(eosHt='on',eosDRDP='on')
         
     
     enddo

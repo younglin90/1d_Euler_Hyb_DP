@@ -4,7 +4,7 @@ module modValues
     implicit none
 
 
-    real(8) :: CFL, time_max, eosGamma, eosCp, len, dx, &
+    real(8) :: CFL, time_max, len, dx, &
      time, charVel, vecSf, dPN, avgDp, underRelaxFactP, &
      timestep, timestepMax, resiP, fVol, gP, gF, resiU, &
      maxP,minP,maxU,minU,segAlp1,segAlp2,gN,resiR,maxR,minR,&
@@ -20,19 +20,24 @@ module modValues
      fGEConFlux, fGEMomFlux, fGEEnrFlux, segBmat,cDr, &
      oldcRho,oldcU,oldcP,fgP,fgN,cDEtDT,cDrDT,oldcT,oldcEt,oldcHt,&
     BmatMom1,BmatMom2,BmatPres,coeffMom1,coeffMom2,fcoeffMom1,fcoeffMom2, &
-        saveOneValue,BmatEnr,BmatCon
+        saveOneValue,BmatEnr,BmatCon,cDHDP,cDHDT,&
+        eosGamma, eosCp,eosCv,eosB,eosQ,eosPinf
     real(8), dimension(:,:), allocatable :: segAmat,oldCons,oldPrim,&
-         AmatPres,AmatMom,AmatEnr,AmatCon, wL, wR
+         AmatPres,AmatMom,AmatEnr,AmatCon, wL, wR, cY
     integer :: nCell, nCellStr, nCellEnd, nTCellStr, nTCellEnd, &
      nFace, nFaceStr, nFaceEnd, i, nstep, lFace, rFace, iterSIMPLE, &
      iterMaxSIMPLE, lCell, rCell, iterPISO, iterMaxPISO, iterDummy,&
-     ntimestep
+     ntimestep,nspe,neq
     character(len=15) :: chReconP,chReconU,chReconT,chReconR,&
-        chFluxP,chFluxU,chFluxT,chFluxR
+        chFluxP,chFluxU,chFluxT,chFluxR,chReconY
+    character(len=15),dimension(:),allocatable :: chEOS
     
     contains
     
     subroutine getAllocate
+        integer :: nq
+    
+        neq = 3 + nspe-1
     
         nCellStr = 1
         nCellEnd = nCell
@@ -70,8 +75,8 @@ module modValues
                   cGEMom(nTCellStr:nTCellEnd), &
                   cGEEnr(nTCellStr:nTCellEnd), &
                   cDr(nTCellStr:nTCellEnd), &
-                  oldCons(nTCellStr:nTCellEnd,3), &
-                  oldPrim(nTCellStr:nTCellEnd,3), &
+                  oldCons(nTCellStr:nTCellEnd,neq), &
+                  oldPrim(nTCellStr:nTCellEnd,neq), &
                   oldcRho(nTCellStr:nTCellEnd), &
                   oldcU(nTCellStr:nTCellEnd), &
                   oldcP(nTCellStr:nTCellEnd), &
@@ -82,10 +87,21 @@ module modValues
                   oldcHt(nTCellStr:nTCellEnd), &
                   coeffMom1(nTCellStr:nTCellEnd), &
                   coeffMom2(nTCellStr:nTCellEnd), &
-                  saveOneValue(nTCellStr:nTCellEnd) )
+                  saveOneValue(nTCellStr:nTCellEnd), &
+                  cDHDP(nTCellStr:nTCellEnd), &
+                  cDHDT(nTCellStr:nTCellEnd), &
+                  cY(nTCellStr:nTCellEnd,nspe) )
         cDP(:) = 0.d0
         cDu(:) = 0.d0
+        cY(:,:) = 1.d0
+        do i=nTCellStr,nTCellEnd
+            forall(nq=1:nspe-1) cY(i,nq) = dmax1( 0.d0 , dmin1( 1.d0, cY(i,nq) ) )
+            cY(i,nspe) = 1.d0 - sum( cY(i,1:nspe-1) )
+            cY(i,nspe) = dmax1( 0.d0 , dmin1( 1.d0, cY(i,nspe) ) )
+        enddo
+        if(nspe==1) cY(:,1) = 1.d0
     
+        
         nFace = nCell+1
         nFaceStr = 0
         nFaceEnd = nCell
@@ -113,8 +129,8 @@ module modValues
                   fgN(nFaceStr:nFaceEnd), &
                   fcoeffMom1(nFaceStr:nFaceEnd), &
                   fcoeffMom2(nFaceStr:nFaceEnd), &
-                  wL(nFaceStr:nFaceEnd,3), &
-                  wR(nFaceStr:nFaceEnd,3)   )
+                  wL(nFaceStr:nFaceEnd,neq+1), &
+                  wR(nFaceStr:nFaceEnd,neq+1)   )
     
         allocate( AmatPres(nCellEnd,nCellEnd), &
                   BmatPres(nCellEnd), &
@@ -129,6 +145,15 @@ module modValues
         AmatMom = 0.d0
         AmatEnr = 0.d0
         AmatCon = 0.d0
+        
+        allocate( chEOS(nspe), &
+                  eosCp(nspe), &
+                  eosGamma(nspe), &
+                  eosCv(nspe), &
+                  eosB(nspe), &
+                  eosQ(nspe), &
+                  eosPinf(nspe) )
+        
     endsubroutine
     
 endmodule
